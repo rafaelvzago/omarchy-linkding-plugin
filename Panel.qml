@@ -251,20 +251,20 @@ Panel {
 
   KeyboardPanel {
     id: keyboardPanel
-    readonly property int contentInset: Style.space(12)
     anchorItem: root.anchorItem
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
     centerOnBar: true
     focusTarget: searchField
-    padding: 0
+    padding: Style.spacing.popupPadding
     contentWidth: fittedContentWidth(Style.space(540))
-    contentHeight: fittedContentHeight(contentColumn.implicitHeight + contentInset * 2)
+    contentHeight: fittedContentHeight(contentColumn.implicitHeight)
 
     // Keep the content surface on the active Omarchy theme background.
     Rectangle {
       anchors.fill: parent
+      anchors.margins: -keyboardPanel.padding
       color: root.themeBackground
       z: 0
     }
@@ -281,10 +281,7 @@ Panel {
 
       Column {
         id: contentColumn
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: keyboardPanel.contentInset
+        width: parent.width
         spacing: Style.space(12)
 
         Row {
