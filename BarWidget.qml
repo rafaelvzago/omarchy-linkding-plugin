@@ -49,6 +49,10 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: "󰃃"
+    // This bookmark glyph has a smaller painted box than most Nerd Font
+    // status glyphs, so give it a two-pixel optical correction while keeping
+    // the standard Omarchy slot and alignment.
+    fontSize: Style.bar.iconFont + 2
     foreground: root.healthColor
     tooltipText: "Linkding bookmarks"
     slotSize: Style.bar.statusSlot
