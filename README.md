@@ -2,6 +2,8 @@
 
 Search active and archived Linkding bookmarks from the Omarchy bar. Select a result to open it in the configured default browser, or copy its URL to the Wayland clipboard.
 
+![Linkding bookmark search panel in the Omarchy bar](preview.png)
+
 ## Compatibility and permissions
 
 This plugin targets Omarchy Quattro with plugin schema 1. It is not tested or advertised as compatible with legacy Omarchy shells.
