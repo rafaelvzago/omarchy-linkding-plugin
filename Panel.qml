@@ -16,7 +16,8 @@ Panel {
   readonly property var barIdentity: hostWidget || root
   readonly property string helperPath: String(Qt.resolvedUrl("linkding_helper.py")).replace(/^file:\/\//, "")
   readonly property color themeBackground: root.bar ? root.bar.background : Color.background
-  readonly property color themeSecondary: root.bar ? root.bar.foreground : Color.accent
+  readonly property color themeSecondary: root.bar ? root.bar.foreground : Color.foreground
+  readonly property color themeAccent: Color.accent
   property string configurationState: "checking"
   property var bookmarks: []
   property string searchQuery: ""
@@ -399,15 +400,17 @@ Panel {
             width: bookmarkList.width
             height: Style.space(58)
             color: root.themeBackground
-            radius: Style.cornerRadius
+            radius: 0
+            border.width: 0
 
             Rectangle {
+              visible: index === root.selectedIndex
               anchors.fill: parent
               anchors.margins: Style.space(2)
-              radius: parent.radius
-              color: "transparent"
-              border.width: index === root.selectedIndex ? Math.max(1, Style.space(2)) : 0
-              border.color: root.themeSecondary
+              radius: Style.cornerRadius
+              color: Style.selectedFillFor(root.themeSecondary, root.themeAccent)
+              border.width: Math.max(1, Style.space(2))
+              border.color: root.themeAccent
             }
 
             MouseArea {
@@ -427,7 +430,7 @@ Panel {
               Text {
                 width: parent.width
                 text: modelData.title
-                color: root.themeSecondary
+                color: index === root.selectedIndex ? root.themeAccent : root.themeSecondary
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.body
                 elide: Text.ElideRight
