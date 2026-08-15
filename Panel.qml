@@ -15,7 +15,7 @@ Panel {
   property bool openedFromHotkey: false
   readonly property var barIdentity: hostWidget || root
   readonly property string helperPath: String(Qt.resolvedUrl("linkding_helper.py")).replace(/^file:\/\//, "")
-  readonly property color themeBackground: root.bar ? root.bar.background : Color.background
+  readonly property color themeBackground: Color.background
   readonly property color themeSecondary: root.bar ? root.bar.foreground : Color.foreground
   readonly property color themeAccent: Color.accent
   property string configurationState: "checking"
@@ -396,7 +396,9 @@ Panel {
               root.requestBookmarks(root.searchQuery, true, root.nextActiveOffset, root.nextArchivedOffset)
           }
           delegate: Rectangle {
+            id: bookmarkRow
             required property var modelData
+            required property int index
             width: bookmarkList.width
             height: Style.space(58)
             color: root.themeBackground
@@ -404,7 +406,7 @@ Panel {
             border.width: 0
 
             Rectangle {
-              visible: index === root.selectedIndex
+              visible: bookmarkRow.index === root.selectedIndex
               anchors.fill: parent
               anchors.margins: Style.space(2)
               radius: Style.cornerRadius
@@ -416,10 +418,10 @@ Panel {
             MouseArea {
               anchors.fill: parent
               onClicked: {
-                root.selectBookmark(index)
+                root.selectBookmark(bookmarkRow.index)
                 searchField.forceActiveFocus()
               }
-              onDoubleClicked: root.openBookmark(index)
+              onDoubleClicked: root.openBookmark(bookmarkRow.index)
             }
 
             Column {
@@ -430,7 +432,7 @@ Panel {
               Text {
                 width: parent.width
                 text: modelData.title
-                color: index === root.selectedIndex ? root.themeAccent : root.themeSecondary
+                color: bookmarkRow.index === root.selectedIndex ? root.themeAccent : root.themeSecondary
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.body
                 elide: Text.ElideRight
@@ -454,7 +456,7 @@ Panel {
               foreground: root.bar ? root.bar.barForeground : Color.foreground
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
               tooltipText: "Copy URL"
-              onClicked: root.copyBookmark(index)
+              onClicked: root.copyBookmark(bookmarkRow.index)
             }
           }
         }
