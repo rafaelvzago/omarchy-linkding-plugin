@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.rafaelvzago.linkding",
+  "name": "Linkding Bookmark Picker",
+  "version": "0.1.0",
+  "author": "Rafael Vzago",
+  "license": "MIT",
+  "description": "Search Linkding bookmarks from the Omarchy bar.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "Linkding",
+    "description": "Search Linkding bookmarks from the Omarchy bar.",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
