@@ -284,21 +284,25 @@ Panel {
         width: parent.width
         spacing: Style.space(12)
 
-        Row {
+        PanelHero {
           width: parent.width
-          spacing: Style.space(8)
-
-          Text {
-            text: "󰃃"
-            color: root.themeSecondary
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.font.heading
-            anchors.verticalCenter: parent.verticalCenter
+          title: "Linkding"
+          meta: "Bookmark search"
+          foreground: root.themeSecondary
+          fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+          iconComponent: Component {
+            Text {
+              text: "󰃃"
+              color: root.themeAccent
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.display
+            }
           }
+        }
 
-          TextField {
+        TextField {
             id: searchField
-            width: parent.width - x - Style.space(8)
+            width: parent.width
             foreground: root.themeSecondary
             // Keep the input surface on the theme background instead of the
             // light control-fill fallback used by generic Qt controls.
@@ -334,7 +338,6 @@ Panel {
                 event.accepted = true
               }
             }
-          }
         }
 
         Text {
