@@ -258,6 +258,13 @@ Panel {
     contentWidth: fittedContentWidth(Style.space(540))
     contentHeight: fittedContentHeight(contentColumn.implicitHeight)
 
+    // Keep the content surface on the active Omarchy theme background.
+    Rectangle {
+      anchors.fill: parent
+      color: Color.background
+      z: -1
+    }
+
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
@@ -301,6 +308,23 @@ Panel {
             // Handle arrows before TextField's cursor movement so they move
             // through bookmark results while the search field stays focused.
             Keys.priority: Keys.BeforeItem
+            Keys.onUpPressed: {
+              root.selectBookmark(root.selectedIndex - 1)
+              event.accepted = true
+            }
+            Keys.onDownPressed: {
+              root.selectBookmark(root.selectedIndex + 1)
+              event.accepted = true
+            }
+            Keys.onReturnPressed: {
+              root.openBookmark(root.selectedIndex)
+              event.accepted = true
+            }
+            Keys.onEnterPressed: {
+              root.openBookmark(root.selectedIndex)
+              event.accepted = true
+            }
+            onAccepted: root.openBookmark(root.selectedIndex)
             onTextChanged: {
               if (root.configurationState === "ready") searchDebounce.restart()
             }
