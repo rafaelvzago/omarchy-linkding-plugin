@@ -288,6 +288,13 @@ Panel {
             id: searchField
             width: parent.width - x - Style.space(8)
             foreground: root.bar ? root.bar.barForeground : Color.foreground
+            // Keep the input surface on the theme background instead of the
+            // light control-fill fallback used by generic Qt controls.
+            background: BorderSurface {
+              color: Color.background
+              borderSpec: searchField._borderSpec
+              radius: Style.cornerRadius
+            }
             placeholderText: "Search Linkding bookmarks…"
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             enabled: root.configurationState === "ready"
