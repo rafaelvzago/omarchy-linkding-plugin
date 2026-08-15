@@ -151,8 +151,11 @@ Panel {
         var result = JSON.parse(output)
         root.configurationState = result.ok === true ? "ready" : String(result.reason || "invalid")
         if (root.configurationState === "ready") {
+          Qt.callLater(function() {
+            if (root.opened) searchField.forceActiveFocus()
+          })
           root.refreshHealth()
-          root.requestBookmarks("", false, 0, 0)
+          root.requestBookmarks(searchField.text, false, 0, 0)
         }
       } catch (error) {
         root.configurationState = exitCode === 0 ? "invalid" : "unavailable"
@@ -262,12 +265,13 @@ Panel {
     Rectangle {
       anchors.fill: parent
       color: Color.background
-      z: -1
+      z: 0
     }
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      z: 1
       blocked: searchField.activeFocus
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
@@ -305,26 +309,6 @@ Panel {
             placeholderText: "Search Linkding bookmarks…"
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             enabled: root.configurationState === "ready"
-            // Handle arrows before TextField's cursor movement so they move
-            // through bookmark results while the search field stays focused.
-            Keys.priority: Keys.BeforeItem
-            Keys.onUpPressed: {
-              root.selectBookmark(root.selectedIndex - 1)
-              event.accepted = true
-            }
-            Keys.onDownPressed: {
-              root.selectBookmark(root.selectedIndex + 1)
-              event.accepted = true
-            }
-            Keys.onReturnPressed: {
-              root.openBookmark(root.selectedIndex)
-              event.accepted = true
-            }
-            Keys.onEnterPressed: {
-              root.openBookmark(root.selectedIndex)
-              event.accepted = true
-            }
-            onAccepted: root.openBookmark(root.selectedIndex)
             onTextChanged: {
               if (root.configurationState === "ready") searchDebounce.restart()
             }
@@ -407,9 +391,16 @@ Panel {
             required property var modelData
             width: bookmarkList.width
             height: Style.space(58)
-            color: index === root.selectedIndex ? Qt.rgba(0.35, 0.75, 0.7, 0.18)
-              : index % 2 === 0 ? "transparent" : Qt.rgba(1, 1, 1, 0.03)
+            color: Color.background
             radius: Style.cornerRadius
+
+            Rectangle {
+              anchors.fill: parent
+              radius: parent.radius
+              color: index === root.selectedIndex
+                ? Style.selectedFillFor(root.bar ? root.bar.barForeground : Color.foreground, Color.accent)
+                : "transparent"
+            }
 
             MouseArea {
               anchors.fill: parent
