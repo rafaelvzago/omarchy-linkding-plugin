@@ -138,7 +138,7 @@ Panel {
     var url = String(root.bookmarks[index].url || "")
     if (url === "") return
     if (copyProcess.running) return
-    copyProcess.pendingUrl = url
+    copyProcess.command = ["wl-copy", "--type", "text/plain;charset=utf-8", url]
     copyProcess.running = true
   }
 
@@ -230,19 +230,15 @@ Panel {
 
   Process {
     id: copyProcess
-    command: ["wl-copy"]
-    stdinEnabled: true
-    property string pendingUrl: ""
-    onStarted: {
-      write(pendingUrl + "\n")
-      pendingUrl = ""
-      Quickshell.execDetached(["omarchy-notification-send", "Linkding", "URL copied"])
-      root.close()
-    }
+    command: []
     onExited: function(exitCode) {
-      if (exitCode !== 0) {
+      if (exitCode === 0) {
+        Quickshell.execDetached(["omarchy-notification-send", "Linkding", "URL copied"])
+        root.close()
+      } else {
         root.searchError = "copy-failed"
       }
+      command = []
     }
   }
 
