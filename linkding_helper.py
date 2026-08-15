@@ -64,6 +64,8 @@ def _validate_url(base_url: str) -> str:
     parsed = urllib.parse.urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise ValidationError("invalid-url")
+    if parsed.scheme == "http":
+        raise ValidationError("https-required")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValidationError("invalid-url")
     return value

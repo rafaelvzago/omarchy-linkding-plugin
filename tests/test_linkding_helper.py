@@ -103,6 +103,40 @@ class LinkdingHelperTests(unittest.TestCase):
         with self.assertRaises(helper.ValidationError):
             helper.write_config("https://linkding.example", " ")
 
+    def test_http_connection_is_rejected_as_requiring_https(self):
+        with self.assertRaisesRegex(helper.ValidationError, "^https-required$"):
+            helper.write_config("http://linkding.example", "secret-token")
+
+    def test_stored_http_connection_fails_closed_without_exposing_secrets(self):
+        helper.config_dir().mkdir(parents=True, mode=0o700)
+        helper.config_path().write_text(
+            json.dumps({"baseUrl": "http://linkding.example", "apiToken": "secret-token"})
+        )
+        helper.config_path().chmod(0o600)
+
+        result = helper.config_status()
+
+        self.assertEqual(result, {"ok": False, "reason": "https-required"})
+        self.assertNotIn("secret-token", json.dumps(result))
+        self.assertNotIn("linkding.example", json.dumps(result))
+
+    @mock.patch.object(helper.urllib.request, "build_opener")
+    def test_http_connection_never_reaches_authenticated_network_operations(self, build_opener):
+        with self.assertRaisesRegex(helper.ValidationError, "^https-required$"):
+            helper.validate_connection("http://linkding.example", "secret-token")
+
+        result = helper.search_bookmarks("http://linkding.example", "secret-token")
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(
+            result["errors"],
+            [
+                {"stream": "active", "reason": "https-required"},
+                {"stream": "archived", "reason": "https-required"},
+            ],
+        )
+        build_opener.assert_not_called()
+
     @mock.patch.object(helper.urllib.request, "build_opener")
     def test_atomic_write_failure_preserves_existing_config(self, build_opener):
         helper.write_config("https://old.example", "old-token")
@@ -117,6 +151,13 @@ class LinkdingHelperTests(unittest.TestCase):
         with self.assertRaises(helper.ValidationError):
             helper.SameOriginRedirectHandler().redirect_request(
                 request, "https://evil.example/capture", 302, "redirect", {}, None
+            )
+
+    def test_redirect_handler_rejects_same_host_https_downgrade(self):
+        request = helper.urllib.request.Request("https://linkding.example/api/user/profile/")
+        with self.assertRaises(helper.ValidationError):
+            helper.SameOriginRedirectHandler().redirect_request(
+                request, "http://linkding.example/api/user/profile/", 302, "redirect", {}, None
             )
 
     def test_merge_bookmarks_deduplicates_sorts_and_falls_back_to_url(self):

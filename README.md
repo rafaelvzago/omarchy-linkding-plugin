@@ -28,13 +28,13 @@ omarchy plugin inspect io.github.rafaelvzago.linkding
 omarchy plugin enable io.github.rafaelvzago.linkding
 ```
 
-Configure the Linkding connection from a terminal. The setup helper prompts for the token without echoing it, validates the token against `/api/user/profile/`, and saves the configuration atomically at `${XDG_CONFIG_HOME:-$HOME/.config}/linkding-search-plugin/config.json`.
+Configure the Linkding connection from a terminal. The setup helper requires an HTTPS Linkding URL, prompts for the token without echoing it, validates the token against `/api/user/profile/`, and saves the configuration atomically at `${XDG_CONFIG_HOME:-$HOME/.config}/linkding-search-plugin/config.json`. HTTP URLs, including localhost and loopback addresses, are rejected before any request is made so the token and bookmark data are never sent in cleartext.
 
 ```sh
 ~/.config/omarchy/plugins/io.github.rafaelvzago.linkding/linkding-setup
 ```
 
-The configuration directory is mode `0700` and the file is mode `0600`. If you edit the file manually, preserve the JSON fields `baseUrl` and `apiToken` and these permissions. The token is never passed as a QML argument, put in a URL, shown in a notification, or written to logs.
+The configuration directory is mode `0700` and the file is mode `0600`. If you edit the file manually, preserve the JSON fields `baseUrl` and `apiToken`, use an `https://` base URL, and keep these permissions. Existing HTTP configurations fail with `https-required`; enable TLS for Linkding and rerun `linkding-setup`. The token is never passed as a QML argument, put in a URL, shown in a notification, or written to logs.
 
 ## Use the picker
 
