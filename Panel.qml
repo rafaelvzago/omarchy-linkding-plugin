@@ -278,7 +278,7 @@ Panel {
 
           Text {
             text: "󰃃"
-            color: root.bar ? root.bar.foreground : Color.foreground
+            color: root.bar ? root.bar.barForeground : Color.foreground
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.heading
             anchors.verticalCenter: parent.verticalCenter
@@ -287,10 +287,13 @@ Panel {
           TextField {
             id: searchField
             width: parent.width - x - Style.space(8)
-            foreground: root.bar ? root.bar.foreground : Color.foreground
+            foreground: root.bar ? root.bar.barForeground : Color.foreground
             placeholderText: "Search Linkding bookmarks…"
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             enabled: root.configurationState === "ready"
+            // Handle arrows before TextField's cursor movement so they move
+            // through bookmark results while the search field stays focused.
+            Keys.priority: Keys.BeforeItem
             onTextChanged: {
               if (root.configurationState === "ready") searchDebounce.restart()
             }
@@ -343,7 +346,7 @@ Panel {
               : root.bookmarks.length === 0
                 ? "No bookmarks found."
                 : ""
-          color: root.bar ? Qt.darker(root.bar.foreground, 1.35) : Color.muted
+          color: root.bar ? Qt.darker(root.bar.barForeground, 1.35) : Color.muted
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.font.body
         }
@@ -352,7 +355,7 @@ Panel {
           visible: root.configurationState === "ready" && (root.incompleteResults || root.searchError !== "")
           text: "Retry"
           width: parent.width
-          foreground: root.bar ? root.bar.foreground : Color.foreground
+          foreground: root.bar ? root.bar.barForeground : Color.foreground
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
           bordered: true
           onClicked: root.requestBookmarks(root.searchQuery, false, 0, 0)
@@ -394,7 +397,7 @@ Panel {
               Text {
                 width: parent.width
                 text: modelData.title
-                color: root.bar ? root.bar.foreground : Color.foreground
+                color: root.bar ? root.bar.barForeground : Color.foreground
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.body
                 elide: Text.ElideRight
@@ -403,7 +406,7 @@ Panel {
               Text {
                 width: parent.width - Style.space(36)
                 text: modelData.domain + (modelData.description !== "" ? " · " + modelData.description : "")
-                color: root.bar ? Qt.darker(root.bar.foreground, 1.4) : Color.muted
+                color: root.bar ? Qt.darker(root.bar.barForeground, 1.4) : Color.muted
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.bodySmall
                 elide: Text.ElideRight
@@ -415,7 +418,7 @@ Panel {
               anchors.rightMargin: Style.space(8)
               anchors.verticalCenter: parent.verticalCenter
               iconText: "󰆏"
-              foreground: root.bar ? root.bar.foreground : Color.foreground
+              foreground: root.bar ? root.bar.barForeground : Color.foreground
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
               tooltipText: "Copy URL"
               onClicked: root.copyBookmark(index)
@@ -426,7 +429,7 @@ Panel {
         Text {
           width: parent.width
           text: "Enter to open  ·  Ctrl+C to copy  ·  Esc to close"
-          color: root.bar ? Qt.darker(root.bar.foreground, 1.5) : Color.muted
+          color: root.bar ? Qt.darker(root.bar.barForeground, 1.5) : Color.muted
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.font.bodySmall
         }

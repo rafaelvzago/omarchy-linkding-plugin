@@ -18,9 +18,9 @@ BarWidget {
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
   readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
   readonly property string healthState: panelLoader.item ? panelLoader.item.healthState : "checking"
-  readonly property color healthColor: healthState === "healthy"
-    ? Color.accent
-    : healthState === "unavailable" ? Color.warning : Color.foreground
+  // Use the bar's resolved foreground so the icon follows the active Omarchy
+  // theme (including light/dark and custom theme changes).
+  readonly property color healthColor: root.bar ? root.bar.barForeground : Color.foreground
 
   function open() { if (panelLoader.item) panelLoader.item.openFromHotkey() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
