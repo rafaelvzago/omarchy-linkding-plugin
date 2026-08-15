@@ -417,11 +417,10 @@ Panel {
 
             MouseArea {
               anchors.fill: parent
-              onClicked: {
-                root.selectBookmark(bookmarkRow.index)
-                searchField.forceActiveFocus()
-              }
-              onDoubleClicked: root.openBookmark(bookmarkRow.index)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onEntered: root.selectBookmark(bookmarkRow.index)
+              onClicked: root.openBookmark(bookmarkRow.index)
             }
 
             Column {
