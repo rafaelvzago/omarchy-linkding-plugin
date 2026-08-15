@@ -255,7 +255,7 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    centerOnBar: true
+    centerOnBar: false
     focusTarget: searchField
     padding: Style.spacing.popupPadding
     contentWidth: fittedContentWidth(Style.space(540))
