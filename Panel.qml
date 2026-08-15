@@ -15,6 +15,8 @@ Panel {
   property bool openedFromHotkey: false
   readonly property var barIdentity: hostWidget || root
   readonly property string helperPath: String(Qt.resolvedUrl("linkding_helper.py")).replace(/^file:\/\//, "")
+  readonly property color themeBackground: root.bar ? root.bar.background : Color.background
+  readonly property color themeSecondary: root.bar ? root.bar.foreground : Color.accent
   property string configurationState: "checking"
   property var bookmarks: []
   property string searchQuery: ""
@@ -252,19 +254,21 @@ Panel {
 
   KeyboardPanel {
     id: keyboardPanel
+    readonly property int contentInset: Style.space(12)
     anchorItem: root.anchorItem
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
     centerOnBar: true
     focusTarget: searchField
+    padding: 0
     contentWidth: fittedContentWidth(Style.space(540))
-    contentHeight: fittedContentHeight(contentColumn.implicitHeight)
+    contentHeight: fittedContentHeight(contentColumn.implicitHeight + contentInset * 2)
 
     // Keep the content surface on the active Omarchy theme background.
     Rectangle {
       anchors.fill: parent
-      color: Color.background
+      color: root.themeBackground
       z: 0
     }
 
@@ -280,7 +284,10 @@ Panel {
 
       Column {
         id: contentColumn
-        width: parent.width
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: keyboardPanel.contentInset
         spacing: Style.space(12)
 
         Row {
@@ -289,7 +296,7 @@ Panel {
 
           Text {
             text: "󰃃"
-            color: root.bar ? root.bar.barForeground : Color.foreground
+            color: root.themeSecondary
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.heading
             anchors.verticalCenter: parent.verticalCenter
@@ -298,11 +305,11 @@ Panel {
           TextField {
             id: searchField
             width: parent.width - x - Style.space(8)
-            foreground: root.bar ? root.bar.barForeground : Color.foreground
+            foreground: root.themeSecondary
             // Keep the input surface on the theme background instead of the
             // light control-fill fallback used by generic Qt controls.
             background: BorderSurface {
-              color: Color.background
+              color: root.themeBackground
               borderSpec: searchField._borderSpec
               radius: Style.cornerRadius
             }
@@ -391,15 +398,16 @@ Panel {
             required property var modelData
             width: bookmarkList.width
             height: Style.space(58)
-            color: Color.background
+            color: root.themeBackground
             radius: Style.cornerRadius
 
             Rectangle {
               anchors.fill: parent
+              anchors.margins: Style.space(2)
               radius: parent.radius
-              color: index === root.selectedIndex
-                ? Style.selectedFillFor(root.bar ? root.bar.barForeground : Color.foreground, Color.accent)
-                : "transparent"
+              color: "transparent"
+              border.width: index === root.selectedIndex ? Math.max(1, Style.space(2)) : 0
+              border.color: root.themeSecondary
             }
 
             MouseArea {
@@ -419,7 +427,7 @@ Panel {
               Text {
                 width: parent.width
                 text: modelData.title
-                color: root.bar ? root.bar.barForeground : Color.foreground
+                color: root.themeSecondary
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.body
                 elide: Text.ElideRight
