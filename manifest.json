@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.rafaelvzago.linkding",
   "name": "Linkding Bookmark Picker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Rafael Vzago",
   "license": "MIT",
   "description": "Search Linkding bookmarks from the Omarchy bar.",

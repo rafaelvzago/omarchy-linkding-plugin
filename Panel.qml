@@ -32,6 +32,13 @@ Panel {
   property int pendingActiveOffset: 0
   property int pendingArchivedOffset: 0
   property int selectedIndex: 0
+  property var allTags: []
+  property var tags: []
+  property int selectedTagIndex: 0
+  property bool tagsLoaded: false
+  property bool tagsLoading: false
+  property string tagError: ""
+  property string appliedTagQuery: ""
   property string healthState: "checking"
   property int healthFailures: 0
   property bool incompleteResults: false
@@ -67,6 +74,68 @@ Panel {
     healthProcess.running = true
   }
 
+  function currentToken(text) {
+    var value = String(text || "")
+    var lastSpace = value.lastIndexOf(" ")
+    return lastSpace < 0 ? value : value.slice(lastSpace + 1)
+  }
+
+  function isHashtagMode(text) {
+    var value = String(text || "")
+    if (value !== "" && value === root.appliedTagQuery) return false
+    return root.currentToken(value).indexOf("#") === 0
+  }
+
+  function tagPrefix(text) {
+    var token = root.currentToken(text)
+    return token.indexOf("#") === 0 ? token.slice(1) : token
+  }
+
+  function filterTags(query) {
+    var prefix = root.tagPrefix(query).toLowerCase()
+    var filtered = []
+    for (var tag of root.allTags) {
+      var name = String(tag.name || "")
+      if (prefix === "" || name.toLowerCase().indexOf(prefix) === 0)
+        filtered.push(tag)
+    }
+    root.tags = filtered
+    root.selectedTagIndex = 0
+  }
+
+  function requestTags(force) {
+    if (root.configurationState !== "ready") return
+    if (root.tagsLoaded && !force) {
+      root.filterTags(searchField.text)
+      return
+    }
+    if (tagProcess.running) return
+    root.tagsLoading = true
+    root.tagError = ""
+    tagProcess.command = ["python3", root.helperPath, "tags", "--limit", "500"]
+    tagProcess.running = true
+  }
+
+  function selectTag(index) {
+    if (root.tags.length === 0) return
+    root.selectedTagIndex = Math.max(0, Math.min(index, root.tags.length - 1))
+    tagList.positionViewAtIndex(root.selectedTagIndex, ListView.Contain)
+  }
+
+  function applyTag(index) {
+    if (index < 0 || index >= root.tags.length) return
+    var name = String(root.tags[index].name || "")
+    if (name === "") return
+    var value = String(searchField.text || "")
+    var lastSpace = value.lastIndexOf(" ")
+    var prefix = lastSpace < 0 ? "" : value.slice(0, lastSpace + 1)
+    var completed = prefix + "#" + name
+    root.appliedTagQuery = completed
+    root.tagsLoaded = false
+    searchField.text = completed
+    root.requestBookmarks(completed, false, 0, 0)
+  }
+
   function requestBookmarks(query, append, activeOffset, archivedOffset) {
     if (root.configurationState !== "ready") return
     if (searchProcess.running) {
@@ -91,6 +160,33 @@ Panel {
       "--archived-offset", String(archivedOffset || 0)
     ]
     searchProcess.running = true
+  }
+
+  Process {
+    id: tagProcess
+    command: []
+    stdout: StdioCollector { id: tagOutput; waitForEnd: true }
+    onExited: function(exitCode) {
+      var output = String(tagOutput.text || "")
+      root.tagsLoading = false
+      try {
+        var result = JSON.parse(output)
+        if (exitCode !== 0 || result.ok !== true) {
+          root.tagError = String(result.reason || "search-failed")
+          root.allTags = []
+          root.tags = []
+          root.tagsLoaded = false
+          root.refreshHealth()
+          return
+        }
+        root.allTags = Array.isArray(result.results) ? result.results : []
+        root.tagsLoaded = true
+        root.filterTags(searchField.text)
+        root.refreshHealth()
+      } catch (error) {
+        root.tagError = "invalid-response"
+      }
+    }
   }
 
   function applySearchResult(result) {
@@ -246,7 +342,12 @@ Panel {
     id: searchDebounce
     interval: 200
     repeat: false
-    onTriggered: root.requestBookmarks(searchField.text, false, 0, 0)
+    onTriggered: {
+      if (root.isHashtagMode(searchField.text))
+        root.requestTags(false)
+      else
+        root.requestBookmarks(searchField.text, false, 0, 0)
+    }
   }
 
   KeyboardPanel {
@@ -276,8 +377,18 @@ Panel {
       blocked: searchField.activeFocus
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
-      onMoveRequested: function(_dx, dy) { root.selectBookmark(root.selectedIndex + dy) }
-      onActivateRequested: root.openBookmark(root.selectedIndex)
+      onMoveRequested: function(_dx, dy) {
+        if (root.isHashtagMode(searchField.text))
+          root.selectTag(root.selectedTagIndex + dy)
+        else
+          root.selectBookmark(root.selectedIndex + dy)
+      }
+      onActivateRequested: {
+        if (root.isHashtagMode(searchField.text))
+          root.applyTag(root.selectedTagIndex)
+        else
+          root.openBookmark(root.selectedIndex)
+      }
 
       Column {
         id: contentColumn
@@ -315,20 +426,26 @@ Panel {
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             enabled: root.configurationState === "ready"
             onTextChanged: {
+              if (searchField.text !== root.appliedTagQuery)
+                root.appliedTagQuery = ""
               if (root.configurationState === "ready") searchDebounce.restart()
             }
             Keys.onPressed: function(event) {
+              var hashtagMode = root.isHashtagMode(searchField.text)
               if (event.key === Qt.Key_Down) {
-                root.selectBookmark(root.selectedIndex + 1)
+                if (hashtagMode) root.selectTag(root.selectedTagIndex + 1)
+                else root.selectBookmark(root.selectedIndex + 1)
                 event.accepted = true
               } else if (event.key === Qt.Key_Up) {
-                root.selectBookmark(root.selectedIndex - 1)
+                if (hashtagMode) root.selectTag(root.selectedTagIndex - 1)
+                else root.selectBookmark(root.selectedIndex - 1)
                 event.accepted = true
               } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                root.openBookmark(root.selectedIndex)
+                if (hashtagMode) root.applyTag(root.selectedTagIndex)
+                else root.openBookmark(root.selectedIndex)
                 event.accepted = true
               } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C) {
-                root.copyBookmark(root.selectedIndex)
+                if (!hashtagMode) root.copyBookmark(root.selectedIndex)
                 event.accepted = true
               } else if (event.key === Qt.Key_Escape) {
                 root.close()
@@ -356,33 +473,97 @@ Panel {
 
         Text {
           visible: root.configurationState === "ready"
-          text: root.loading
-            ? "Loading bookmarks…"
-            : root.incompleteResults
-              ? "Some bookmark results are unavailable. Retry to load all bookmarks."
-            : root.searchError !== ""
-              ? "Could not load bookmarks (" + root.searchError + ")."
-              : root.bookmarks.length === 0
-                ? "No bookmarks found."
-                : ""
+          text: root.isHashtagMode(searchField.text)
+            ? (root.tagsLoading
+              ? "Loading tags…"
+              : root.tagError !== ""
+                ? "Could not load tags (" + root.tagError + ")."
+                : root.tags.length === 0
+                  ? "No tags match."
+                  : "")
+            : (root.loading
+              ? "Loading bookmarks…"
+              : root.incompleteResults
+                ? "Some bookmark results are unavailable. Retry to load all bookmarks."
+              : root.searchError !== ""
+                ? "Could not load bookmarks (" + root.searchError + ")."
+                : root.bookmarks.length === 0
+                  ? "No bookmarks found."
+                  : "")
           color: root.bar ? Qt.darker(root.bar.barForeground, 1.35) : Color.muted
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.font.body
         }
 
         Button {
-          visible: root.configurationState === "ready" && (root.incompleteResults || root.searchError !== "")
+          visible: root.configurationState === "ready" && (
+            (root.isHashtagMode(searchField.text) && root.tagError !== "")
+            || (!root.isHashtagMode(searchField.text) && (root.incompleteResults || root.searchError !== ""))
+          )
           text: "Retry"
           width: parent.width
           foreground: root.bar ? root.bar.barForeground : Color.foreground
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
           bordered: true
-          onClicked: root.requestBookmarks(root.searchQuery, false, 0, 0)
+          onClicked: {
+            if (root.isHashtagMode(searchField.text))
+              root.requestTags(true)
+            else
+              root.requestBookmarks(root.searchQuery, false, 0, 0)
+          }
+        }
+
+        ListView {
+          id: tagList
+          visible: root.configurationState === "ready" && root.isHashtagMode(searchField.text) && root.tags.length > 0
+          width: parent.width
+          height: Math.min(contentHeight, Style.space(320))
+          clip: true
+          model: root.tags
+          delegate: Rectangle {
+            id: tagRow
+            required property var modelData
+            required property int index
+            width: tagList.width
+            height: Style.space(42)
+            color: root.themeBackground
+            radius: 0
+            border.width: 0
+
+            Rectangle {
+              visible: tagRow.index === root.selectedTagIndex
+              anchors.fill: parent
+              anchors.margins: Style.space(2)
+              radius: Style.cornerRadius
+              color: Style.selectedFillFor(root.themeSecondary, root.themeAccent)
+              border.width: Math.max(1, Style.space(2))
+              border.color: root.themeAccent
+            }
+
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onEntered: root.selectTag(tagRow.index)
+              onClicked: root.applyTag(tagRow.index)
+            }
+
+            Text {
+              anchors.fill: parent
+              anchors.margins: Style.space(8)
+              text: "#" + String(modelData.name || "")
+              color: tagRow.index === root.selectedTagIndex ? root.themeAccent : root.themeSecondary
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.body
+              verticalAlignment: Text.AlignVCenter
+              elide: Text.ElideRight
+            }
+          }
         }
 
         ListView {
           id: bookmarkList
-          visible: root.configurationState === "ready" && root.bookmarks.length > 0
+          visible: root.configurationState === "ready" && !root.isHashtagMode(searchField.text) && root.bookmarks.length > 0
           width: parent.width
           height: Math.min(contentHeight, Style.space(320))
           clip: true
@@ -458,7 +639,9 @@ Panel {
 
         Text {
           width: parent.width
-          text: "Enter to open  ·  Ctrl+C to copy  ·  Esc to close"
+          text: root.isHashtagMode(searchField.text)
+            ? "Enter to apply tag  ·  Esc to close"
+            : "Enter to open  ·  Ctrl+C to copy  ·  Esc to close"
           color: root.bar ? Qt.darker(root.bar.barForeground, 1.5) : Color.muted
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.font.bodySmall

@@ -40,6 +40,8 @@ The configuration directory is mode `0700` and the file is mode `0600`. If you e
 
 Open the Linkding panel from the bar or its configured hotkey. Type to search. The panel searches active and archived bookmarks and loads more results when you reach the end of the list.
 
+Type `#` to list existing Tags. Keep typing to filter by name prefix, then use Up and Down and press Enter (or click) to apply a Tag. That completes the current `#` token and searches bookmarks with Linkding’s `#tag` query. Unknown names only filter the list; the picker does not create Tags.
+
 - Click a result to open its URL in the default browser.
 - Click the copy button on a result to copy its URL.
 - Use Up and Down to select a result, then press Enter to open it.

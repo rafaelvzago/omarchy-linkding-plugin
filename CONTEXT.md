@@ -23,3 +23,7 @@ _Avoid_: Account, credentials bundle
 **API Helper**:
 A narrow command boundary that validates the Linkding Connection and performs the plugin's approved Linkding operations without exposing credentials to the Bookmark Picker.
 _Avoid_: Generic HTTP client, service layer
+
+**Tag**:
+A Linkding tag name shown and applied as `#name` in the Bookmark Picker. Completing a Tag searches bookmarks with that query; the picker does not create tags.
+_Avoid_: Hashtag create, label

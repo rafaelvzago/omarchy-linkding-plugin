@@ -301,6 +301,62 @@ def _continuation_offset(payload: dict[str, Any], base_url: str, endpoint: str) 
         return None
 
 
+TAG_PAGE_SIZE = 100
+TAG_FETCH_CAP = 500
+
+
+def _tag_prefix(query: str) -> str:
+    value = query.strip()
+    if value.startswith("#"):
+        value = value[1:]
+    return value.casefold()
+
+
+def _normalize_tag(item: object) -> dict[str, str] | None:
+    if not isinstance(item, dict):
+        return None
+    name = item.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    return {"name": name.strip()}
+
+
+def list_tags(
+    base_url: str,
+    api_token: str,
+    query: str = "",
+    limit: int = TAG_FETCH_CAP,
+) -> dict[str, object]:
+    if not isinstance(api_token, str) or not api_token.strip():
+        raise ValidationError("invalid-token")
+    prefix = _tag_prefix(query)
+    cap = max(1, min(int(limit), TAG_FETCH_CAP))
+    collected: list[dict[str, str]] = []
+    offset = 0
+    while len(collected) < cap:
+        page_limit = min(TAG_PAGE_SIZE, cap - len(collected))
+        payload = _api_json(base_url, api_token, "/api/tags/", {"limit": page_limit, "offset": offset})
+        raw = payload.get("results")
+        if not isinstance(raw, list):
+            raise ValidationError("invalid-response")
+        for item in raw:
+            tag = _normalize_tag(item)
+            if tag is None:
+                continue
+            if prefix and not tag["name"].casefold().startswith(prefix):
+                continue
+            collected.append(tag)
+            if len(collected) >= cap:
+                break
+        if len(raw) < page_limit:
+            break
+        next_offset = _continuation_offset(payload, base_url, "/api/tags/")
+        if next_offset is None or next_offset <= offset:
+            break
+        offset = next_offset
+    return {"ok": True, "results": collected}
+
+
 def search_bookmarks(
     base_url: str,
     api_token: str,
@@ -384,6 +440,9 @@ def main(argv: list[str] | None = None) -> int:
     search_parser.add_argument("--limit", type=int, default=20)
     search_parser.add_argument("--active-offset", type=int, default=0)
     search_parser.add_argument("--archived-offset", type=int, default=0)
+    tags_parser = subparsers.add_parser("tags", help="list Linkding tags for the Bookmark Picker")
+    tags_parser.add_argument("--query", default="")
+    tags_parser.add_argument("--limit", type=int, default=TAG_FETCH_CAP)
     subparsers.add_parser("health", help="check Linkding reachability without sending the token")
     args = parser.parse_args(argv)
     if args.command == "setup":
@@ -402,6 +461,15 @@ def main(argv: list[str] | None = None) -> int:
                 active_offset=getattr(args, "active_offset", 0),
                 archived_offset=getattr(args, "archived_offset", 0),
             )
+        except ValidationError as error:
+            print(json.dumps({"ok": False, "reason": str(error)}, separators=(",", ":")))
+            return 1
+        print(json.dumps(result, separators=(",", ":")))
+        return 0
+    if args.command == "tags":
+        try:
+            config = _read_config()
+            result = list_tags(config["baseUrl"], config["apiToken"], query=args.query, limit=args.limit)
         except ValidationError as error:
             print(json.dumps({"ok": False, "reason": str(error)}, separators=(",", ":")))
             return 1
