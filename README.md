@@ -6,11 +6,11 @@ Search active and archived Linkding bookmarks from the Omarchy bar. Select a res
 
 ## Compatibility and permissions
 
-This plugin targets Omarchy Quattro with plugin schema 1. It is not tested or advertised as compatible with legacy Omarchy shells.
+This plugin targets Omarchy Quattro with plugin schema 1. It is not tested on legacy Omarchy shells.
 
-Plugins run unsandboxed inside the user's long-running Omarchy shell. This plugin can execute user-level processes, contact the configured Linkding server, launch the default browser, write the clipboard, and read and write its protected configuration file. Inspect the source before enabling it.
+Plugins run unsandboxed inside the user's long-running Omarchy shell. This one can start user-level processes, talk to the configured Linkding server, launch the default browser, write the clipboard, and read and write its protected configuration file. Read the source before you enable it.
 
-The host provides these runtime tools. The plugin does not install them:
+The host already has the tools below. The plugin does not install them:
 
 - Omarchy Quattro and Quickshell
 - Python 3 and standard shell utilities
@@ -28,19 +28,30 @@ omarchy plugin inspect io.github.rafaelvzago.linkding
 omarchy plugin enable io.github.rafaelvzago.linkding
 ```
 
-Configure the Linkding connection from a terminal. The setup helper requires an HTTPS Linkding URL, prompts for the token without echoing it, validates the token against `/api/user/profile/`, and saves the configuration atomically at `${XDG_CONFIG_HOME:-$HOME/.config}/linkding-search-plugin/config.json`. HTTP URLs, including localhost and loopback addresses, are rejected before any request is made so the token and bookmark data are never sent in cleartext.
+Configure the Linkding connection in a terminal. The setup helper wants an HTTPS Linkding URL, asks for the token without echoing it, checks the token against `/api/user/profile/`, and writes `${XDG_CONFIG_HOME:-$HOME/.config}/linkding-search-plugin/config.json` atomically. HTTP URLs, including localhost and loopback, are rejected before any request so the token and bookmark data are never sent in cleartext.
 
 ```sh
 ~/.config/omarchy/plugins/io.github.rafaelvzago.linkding/linkding-setup
 ```
 
-The configuration directory is mode `0700` and the file is mode `0600`. If you edit the file manually, preserve the JSON fields `baseUrl` and `apiToken`, use an `https://` base URL, and keep these permissions. Existing HTTP configurations fail with `https-required`; enable TLS for Linkding and rerun `linkding-setup`. The token is never passed as a QML argument, put in a URL, shown in a notification, or written to logs.
+The configuration directory is mode `0700` and the file is mode `0600`. If you edit the file by hand, keep the JSON fields `baseUrl` and `apiToken`, use an `https://` base URL, and leave those permissions as they are. Existing HTTP configurations fail with `https-required`; turn on TLS for Linkding and run `linkding-setup` again. The token is never passed as a QML argument, put in a URL, shown in a notification, or written to logs.
 
-## Use the picker
+## Search
 
-Open the Linkding panel from the bar or its configured hotkey. Type to search. The panel searches active and archived bookmarks and loads more results when you reach the end of the list.
+Open the Linkding panel from the bar or its configured hotkey, then type.
 
-Type `#` to list existing Tags. Keep typing to filter by name prefix, then use Up and Down and press Enter (or click) to apply a Tag. That completes the current `#` token and searches bookmarks with Linkding’s `#tag` query. Unknown names only filter the list; the picker does not create Tags.
+Plain text searches active and archived bookmarks. The list loads more results when you reach the end.
+
+Tags work like a hashtag search:
+
+1. Type `#`. The panel lists Tags that already exist in Linkding.
+2. Keep typing after `#` to filter that list by name prefix.
+3. Move with Up and Down, then press Enter or click a Tag. The picker finishes the current `#` token and searches bookmarks with Linkding's `#tag` query.
+4. After a Tag is applied, the field holds something like `#work`. Type more words after a space to narrow the search, or type another `#` to pick a second Tag the same way.
+
+A name that is not an existing Tag only filters the Tag list. The picker does not create Tags.
+
+Actions on a bookmark result:
 
 - Click a result to open its URL in the default browser.
 - Click the copy button on a result to copy its URL.
@@ -49,9 +60,11 @@ Type `#` to list existing Tags. Keep typing to filter by name prefix, then use U
 - Press Escape to close the panel.
 - Press Tab, or Shift+Tab, to switch between bar panels.
 
+While the current token starts with `#`, Up, Down, and Enter move through Tags instead of bookmarks.
+
 ## Manual install and lifecycle
 
-For a manual install, copy this directory to `~/.config/omarchy/plugins/io.github.rafaelvzago.linkding/`, rescan the shell, and enable the plugin. Exact command names can vary with the installed Quattro release. Run `omarchy plugin --help` for the commands supported by your installation.
+To install by hand, copy this directory to `~/.config/omarchy/plugins/io.github.rafaelvzago.linkding/`, rescan the shell, and enable the plugin. Exact command names can vary with the installed Quattro release. Run `omarchy plugin --help` for the commands your installation supports.
 
 ```sh
 omarchy plugin list --json
@@ -64,13 +77,13 @@ omarchy plugin disable io.github.rafaelvzago.linkding
 omarchy plugin remove io.github.rafaelvzago.linkding
 ```
 
-The plugin does not start a second Quickshell process and has no automatic install or secret-store lifecycle hooks. Setup is explicit and user-owned. Disabling or removing the plugin does not manage the separate Linkding configuration file.
+The plugin does not start a second Quickshell process and has no automatic install or secret-store lifecycle hooks. You run setup yourself. Disabling or removing the plugin does not touch the separate Linkding configuration file.
 
 ## Troubleshooting
 
-If the bar reports missing or unsafe configuration, rerun `linkding-setup` and check the directory and file modes. The helper reports these connection states separately: `authentication-failed`, `unreachable`, `timeout`, `rate-limited`, `server-failed`, and `invalid-response`.
+If the bar reports missing or unsafe configuration, run `linkding-setup` again and check the directory and file modes. The helper reports these connection states separately: `authentication-failed`, `unreachable`, `timeout`, `rate-limited`, `server-failed`, and `invalid-response`.
 
-The bar health color checks unauthenticated `/health`; it never sends the API token. To inspect shell errors, run:
+The bar health color checks unauthenticated `/health`. It never sends the API token. To inspect shell errors, run:
 
 ```sh
 qs log -p "$OMARCHY_PATH/shell" --tail 100
@@ -78,7 +91,7 @@ qs log -p "$OMARCHY_PATH/shell" --tail 100
 
 ## Local validation
 
-Run these checks from the repository root:
+From the repository root:
 
 ```sh
 python3 -m unittest discover -s tests -v
@@ -95,10 +108,10 @@ Before submitting this plugin to the marketplace:
 - Keep the code in a public GitHub repository.
 - Keep a valid `manifest.json` at the repository root.
 - Keep `README.md` and the MIT `LICENSE` at the repository root.
-- Check that installation and removal are safe and do not require automatic secret-store lifecycle hooks.
+- Check that installation and removal do not need automatic secret-store lifecycle hooks.
 - Run the local validation commands above, including `omarchy plugin validate .`.
 - Submit the repository through the [Omarchy plugin issue form](https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/new?template=submit-plugin.yml).
-- Use `Productivity` as the suggested category.
-- Use these suggested tags: `Linkding`, `bookmarks`, `search`, `bar-widget`.
+- Suggested category: `Productivity`.
+- Suggested tags: `Linkding`, `bookmarks`, `search`, `bar-widget`.
 
 The marketplace validates listings, not plugin security. Review the code and document any permissions before submitting.
