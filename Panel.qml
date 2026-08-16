@@ -33,7 +33,7 @@ Panel {
   property int pendingArchivedOffset: 0
   property int selectedIndex: 0
   property var allTags: []
-  property var tags: []
+  property var tagMatches: []
   property int selectedTagIndex: 0
   property bool tagsLoaded: false
   property bool tagsLoading: false
@@ -91,15 +91,23 @@ Panel {
     return token.indexOf("#") === 0 ? token.slice(1) : token
   }
 
+  function resultList(value) {
+    var items = []
+    if (value === null || value === undefined || value.length === undefined) return items
+    for (var i = 0; i < value.length; i++) items.push(value[i])
+    return items
+  }
+
   function filterTags(query) {
     var prefix = root.tagPrefix(query).toLowerCase()
     var filtered = []
-    for (var tag of root.allTags) {
-      var name = String(tag.name || "")
+    for (var i = 0; i < root.allTags.length; i++) {
+      var tag = root.allTags[i]
+      var name = tag && tag.name !== undefined && tag.name !== null ? String(tag.name) : ""
       if (prefix === "" || name.toLowerCase().indexOf(prefix) === 0)
         filtered.push(tag)
     }
-    root.tags = filtered
+    root.tagMatches = filtered
     root.selectedTagIndex = 0
   }
 
@@ -117,14 +125,14 @@ Panel {
   }
 
   function selectTag(index) {
-    if (root.tags.length === 0) return
-    root.selectedTagIndex = Math.max(0, Math.min(index, root.tags.length - 1))
+    if (root.tagMatches.length === 0) return
+    root.selectedTagIndex = Math.max(0, Math.min(index, root.tagMatches.length - 1))
     tagList.positionViewAtIndex(root.selectedTagIndex, ListView.Contain)
   }
 
   function applyTag(index) {
-    if (index < 0 || index >= root.tags.length) return
-    var name = String(root.tags[index].name || "")
+    if (index < 0 || index >= root.tagMatches.length) return
+    var name = String(root.tagMatches[index].name || "")
     if (name === "") return
     var value = String(searchField.text || "")
     var lastSpace = value.lastIndexOf(" ")
@@ -174,12 +182,12 @@ Panel {
         if (exitCode !== 0 || result.ok !== true) {
           root.tagError = String(result.reason || "search-failed")
           root.allTags = []
-          root.tags = []
+          root.tagMatches = []
           root.tagsLoaded = false
           root.refreshHealth()
           return
         }
-        root.allTags = Array.isArray(result.results) ? result.results : []
+        root.allTags = root.resultList(result.results)
         root.tagsLoaded = true
         root.filterTags(searchField.text)
         root.refreshHealth()
@@ -190,18 +198,23 @@ Panel {
   }
 
   function applySearchResult(result) {
-    var incoming = Array.isArray(result.results) ? result.results : []
+    var incoming = root.resultList(result.results)
     if (root.appendSearchResults) {
       var byId = {}
-      for (var existing of root.bookmarks) {
+      for (var existingIndex = 0; existingIndex < root.bookmarks.length; existingIndex++) {
+        var existing = root.bookmarks[existingIndex]
         var existingKey = existing.id === null || existing.id === undefined ? existing.url : existing.id
         byId[String(existingKey)] = existing
       }
-      for (var item of incoming) {
+      for (var itemIndex = 0; itemIndex < incoming.length; itemIndex++) {
+        var item = incoming[itemIndex]
         var itemKey = item.id === null || item.id === undefined ? item.url : item.id
         byId[String(itemKey)] = item
       }
-      root.bookmarks = Object.keys(byId).map(function(key) { return byId[key] })
+      var merged = []
+      var keys = Object.keys(byId)
+      for (var keyIndex = 0; keyIndex < keys.length; keyIndex++) merged.push(byId[keys[keyIndex]])
+      root.bookmarks = merged
     } else {
       root.bookmarks = incoming
     }
@@ -254,7 +267,9 @@ Panel {
             if (root.opened) searchField.forceActiveFocus()
           })
           root.refreshHealth()
-          root.requestBookmarks(searchField.text, false, 0, 0)
+          root.requestTags(false)
+          if (!root.isHashtagMode(searchField.text))
+            root.requestBookmarks(searchField.text, false, 0, 0)
         }
       } catch (error) {
         root.configurationState = exitCode === 0 ? "invalid" : "unavailable"
@@ -428,7 +443,11 @@ Panel {
             onTextChanged: {
               if (searchField.text !== root.appliedTagQuery)
                 root.appliedTagQuery = ""
-              if (root.configurationState === "ready") searchDebounce.restart()
+              if (root.configurationState !== "ready") return
+              if (root.isHashtagMode(searchField.text))
+                root.requestTags(false)
+              else
+                searchDebounce.restart()
             }
             Keys.onPressed: function(event) {
               var hashtagMode = root.isHashtagMode(searchField.text)
@@ -478,7 +497,7 @@ Panel {
               ? "Loading tags…"
               : root.tagError !== ""
                 ? "Could not load tags (" + root.tagError + ")."
-                : root.tags.length === 0
+                : root.tagMatches.length === 0
                   ? "No tags match."
                   : "")
             : (root.loading
@@ -515,11 +534,11 @@ Panel {
 
         ListView {
           id: tagList
-          visible: root.configurationState === "ready" && root.isHashtagMode(searchField.text) && root.tags.length > 0
+          visible: root.configurationState === "ready" && root.isHashtagMode(searchField.text) && root.tagMatches.length > 0
           width: parent.width
           height: Math.min(contentHeight, Style.space(320))
           clip: true
-          model: root.tags
+          model: root.tagMatches
           delegate: Rectangle {
             id: tagRow
             required property var modelData
