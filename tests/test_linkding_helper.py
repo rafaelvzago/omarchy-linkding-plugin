@@ -309,6 +309,61 @@ class LinkdingHelperTests(unittest.TestCase):
         self.assertFalse(result["complete"])
         self.assertEqual(result["errors"][0]["stream"], "archived")
 
+    @mock.patch.object(helper.urllib.request, "build_opener")
+    def test_list_tags_filters_prefix_and_strips_hash(self, build_opener):
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse({
+            "results": [
+                {"name": "work"},
+                {"name": "Workshop"},
+                {"name": "home"},
+                {"name": ""},
+                "skip",
+                {"id": 1},
+            ],
+            "next": None,
+        })
+        build_opener.return_value = opener
+        result = helper.list_tags("https://linkding.example", "secret-token", query="#wo")
+        self.assertEqual(result, {"ok": True, "results": [{"name": "work"}, {"name": "Workshop"}]})
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Token secret-token")
+        self.assertTrue(request.full_url.startswith("https://linkding.example/api/tags/"))
+
+    @mock.patch.object(helper.urllib.request, "build_opener")
+    def test_list_tags_paginates_until_cap_or_end(self, build_opener):
+        pages = [
+            FakeResponse({
+                "results": [{"name": f"tag-{index}"} for index in range(100)],
+                "next": "https://linkding.example/api/tags/?limit=100&offset=100",
+            }),
+            FakeResponse({
+                "results": [{"name": "last"}],
+                "next": None,
+            }),
+        ]
+        opener = mock.Mock()
+        opener.open.side_effect = pages
+        build_opener.return_value = opener
+        result = helper.list_tags("https://linkding.example", "secret-token")
+        self.assertEqual(len(result["results"]), 101)
+        self.assertEqual(result["results"][-1], {"name": "last"})
+        self.assertEqual(opener.open.call_count, 2)
+
+    @mock.patch.object(helper.urllib.request, "build_opener")
+    def test_list_tags_rejects_invalid_token_without_request(self, build_opener):
+        with self.assertRaisesRegex(helper.ValidationError, "invalid-token"):
+            helper.list_tags("https://linkding.example", "   ")
+        build_opener.assert_not_called()
+
+    @mock.patch.object(helper.urllib.request, "build_opener")
+    def test_list_tags_malformed_payload_is_distinct(self, build_opener):
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse({"results": "nope"})
+        build_opener.return_value = opener
+        with self.assertRaisesRegex(helper.ValidationError, "invalid-response"):
+            helper.list_tags("https://linkding.example", "token")
+
 
 if __name__ == "__main__":
     unittest.main()
